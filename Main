@@ -1,0 +1,503 @@
+import { useState, useEffect, useRef } from "react";
+
+const C = {
+  cyan:"#00ffe7",cyanDim:"#00bfad",cyanGlow:"#00ffe733",cyanFaint:"#00ffe711",
+  bg:"#07090f",bgPanel:"#0b0f18",bgSide:"#080b13",bgCard:"#0f1520",
+  bgHover:"#131c28",border:"#162030",borderLit:"#00ffe722",
+  text:"#d6e8f5",textDim:"#4a6478",textMid:"#7a9ab0",
+  red:"#ff4d6d",green:"#00ffaa",yellow:"#ffd166",
+};
+
+const TABS = [
+  {id:"home",label:"Trang Chủ",icon:"⌂"},
+  {id:"combat",label:"Chiến Đấu",icon:"⚔"},
+  {id:"player",label:"Người Chơi",icon:"◈"},
+  {id:"visual",label:"Hiển Thị",icon:"◉"},
+  {id:"misc",label:"Khác",icon:"◎"},
+  {id:"config",label:"Cài Đặt",icon:"⚙"},
+];
+
+const GlobalStyle = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#07090f}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:#162030;border-radius:2px}
+    @keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{box-shadow:0 0 6px #00ffe788}50%{box-shadow:0 0 18px #00ffe7cc,0 0 32px #00ffe744}}
+    @keyframes borderGlow{0%,100%{border-color:#00ffe722}50%{border-color:#00ffe766}}
+    @keyframes floatDot{0%,100%{transform:translateY(0);opacity:.6}50%{transform:translateY(-6px);opacity:1}}
+    @keyframes gridPan{from{background-position:0 0}to{background-position:40px 40px}}
+    .tab-content{animation:fadeSlideIn .25s ease both}
+    .glow-pulse{animation:pulse 2.4s ease-in-out infinite}
+  `}</style>
+);function Toggle({label,desc,value,onChange,disabled}){
+  const [hov,setHov]=useState(false);
+  return(
+    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      onClick={()=>!disabled&&onChange(!value)}
+      style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"11px 14px",borderRadius:8,marginBottom:8,
+        cursor:disabled?"not-allowed":"pointer",
+        background:hov?C.bgHover:C.bgCard,
+        border:`1px solid ${value?C.cyan+"44":C.border}`,
+        transition:"all .2s",boxShadow:value?`0 0 16px ${C.cyan}18`:"none",
+        opacity:disabled?.4:1}}>
+      <div>
+        <div style={{color:C.text,fontFamily:"Rajdhani,sans-serif",fontWeight:600,fontSize:13.5,letterSpacing:.3}}>{label}</div>
+        {desc&&<div style={{color:C.textDim,fontSize:11,marginTop:1,fontFamily:"JetBrains Mono,monospace"}}>{desc}</div>}
+      </div>
+      <div style={{width:42,height:23,borderRadius:12,flexShrink:0,position:"relative",
+        background:value?`linear-gradient(90deg,${C.cyanDim},${C.cyan})`:C.border,
+        transition:"background .25s",boxShadow:value?`0 0 12px ${C.cyan}99`:"none"}}>
+        <div style={{position:"absolute",top:3,borderRadius:"50%",
+          left:value?22:3,width:17,height:17,background:"#fff",
+          boxShadow:value?`0 0 6px ${C.cyan}`:"0 1px 3px #00000066",
+          transition:"left .25s cubic-bezier(.34,1.56,.64,1)"}}/>
+      </div>
+    </div>
+  );
+}
+
+function Slider({label,value,min,max,unit="",onChange}){
+  const pct=((value-min)/(max-min))*100;
+  return(
+    <div style={{background:C.bgCard,borderRadius:8,padding:"12px 14px",border:`1px solid ${C.border}`,marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+        <span style={{color:C.text,fontFamily:"Rajdhani,sans-serif",fontWeight:600,fontSize:13.5}}>{label}</span>
+        <span style={{color:C.cyan,fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:600,
+          background:C.cyanFaint,padding:"1px 8px",borderRadius:4,border:`1px solid ${C.cyanGlow}`}}>{value}{unit}</span>
+      </div>
+      <div style={{position:"relative",height:6,borderRadius:3,background:C.border}}>
+        <div style={{position:"absolute",left:0,top:0,height:"100%",borderRadius:3,
+          width:`${pct}%`,background:`linear-gradient(90deg,${C.cyanDim},${C.cyan})`,
+          boxShadow:`0 0 8px ${C.cyan}66`,transition:"width .08s"}}/>
+        <div style={{position:"absolute",top:"50%",transform:"translateY(-50%)",
+          left:`calc(${pct}% - 9px)`,width:18,height:18,borderRadius:"50%",
+          background:`radial-gradient(circle,${C.cyan},${C.cyanDim})`,
+          boxShadow:`0 0 10px ${C.cyan},0 0 20px ${C.cyan}44`,
+          border:"2px solid #fff",transition:"left .08s",pointerEvents:"none"}}/>
+        <input type="range" min={min} max={max} value={value}
+          onChange={e=>onChange(+e.target.value)}
+          style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}}/>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
+        <span style={{color:C.textDim,fontSize:10,fontFamily:"JetBrains Mono,monospace"}}>{min}</span>
+        <span style={{color:C.textDim,fontSize:10,fontFamily:"JetBrains Mono,monospace"}}>{max}</span>
+      </div>
+    </div>
+  );
+}
+
+function Btn({label,desc,accent,onClick}){
+  const [hov,setHov]=useState(false);
+  const [press,setPress]=useState(false);
+  const col=accent||C.cyan;
+  return(
+    <button onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setPress(false)}}
+      onMouseDown={()=>setPress(true)} onMouseUp={()=>setPress(false)} onClick={onClick}
+      style={{width:"100%",padding:"11px 14px",borderRadius:8,marginBottom:8,
+        background:press?col+"33":hov?col+"18":C.bgCard,
+        border:`1px solid ${hov||press?col+"66":C.border}`,
+        color:col,cursor:"pointer",textAlign:"left",
+        fontFamily:"Rajdhani,sans-serif",fontWeight:700,fontSize:13.5,letterSpacing:.4,
+        transition:"all .15s",boxShadow:press?`0 0 20px ${col}44`:hov?`0 0 10px ${col}22`:"none",
+        transform:press?"scale(.98)":"scale(1)"}}>
+      {label}
+      {desc&&<div style={{fontWeight:400,fontSize:11,color:C.textMid,marginTop:2,fontFamily:"JetBrains Mono,monospace"}}>{desc}</div>}
+    </button>
+  );
+}
+
+function StatBadge({label,value,color}){
+  return(
+    <div style={{flex:1,background:C.bgCard,borderRadius:8,
+      border:`1px solid ${(color||C.cyan)+"33"}`,padding:"10px 12px",textAlign:"center"}}>
+      <div style={{color:color||C.cyan,fontFamily:"JetBrains Mono,monospace",fontSize:18,fontWeight:600}}>{value}</div>
+      <div style={{color:C.textDim,fontSize:10,marginTop:3,fontFamily:"Rajdhani,sans-serif",letterSpacing:.5}}>{label}</div>
+    </div>
+  );
+}
+
+function SectionHead({label}){
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,marginTop:4}}>
+      <div style={{width:3,height:14,borderRadius:2,background:C.cyan,boxShadow:`0 0 8px ${C.cyan}`}}/>
+      <span style={{color:C.textMid,fontSize:10,fontFamily:"Rajdhani,sans-serif",fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>{label}</span>
+      <div style={{flex:1,height:1,background:`linear-gradient(90deg,${C.border},transparent)`}}/>
+    </div>
+  );
+}function BootScreen({onDone}){
+  const [pct,setPct]=useState(0);
+  const [line,setLine]=useState(0);
+  const lines=[
+    "> Initializing BẢO HUB...",
+    "> Loading Fluent UI Library...",
+    "> Injecting modules...",
+    "> Bypassing detection...",
+    "> Ready.",
+  ];
+  useEffect(()=>{
+    const t=setInterval(()=>{
+      setPct(p=>{
+        if(p>=100){clearInterval(t);setTimeout(onDone,400);return 100;}
+        return p+2;
+      });
+    },30);
+    return()=>clearInterval(t);
+  },[]);
+  useEffect(()=>{setLine(Math.floor((pct/100)*lines.length));},[pct]);
+  return(
+    <div style={{position:"fixed",inset:0,background:C.bg,zIndex:999,
+      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      fontFamily:"JetBrains Mono,monospace"}}>
+      <div style={{position:"absolute",inset:0,opacity:.04,
+        backgroundImage:`linear-gradient(${C.cyan} 1px,transparent 1px),linear-gradient(90deg,${C.cyan} 1px,transparent 1px)`,
+        backgroundSize:"40px 40px",animation:"gridPan 3s linear infinite"}}/>
+      <div style={{textAlign:"center",position:"relative"}}>
+        <div style={{fontSize:42,fontFamily:"Rajdhani,sans-serif",fontWeight:700,
+          color:C.cyan,letterSpacing:6,
+          textShadow:`0 0 30px ${C.cyan},0 0 60px ${C.cyan}44`,
+          marginBottom:4}}>BẢO HUB</div>
+        <div style={{color:C.textDim,fontSize:11,letterSpacing:3,marginBottom:32}}>SIÊU SIÊU MẠNH • v3.0</div>
+        <div style={{width:320,height:3,background:C.border,borderRadius:2,marginBottom:16,overflow:"hidden"}}>
+          <div style={{height:"100%",borderRadius:2,width:`${pct}%`,
+            background:`linear-gradient(90deg,${C.cyanDim},${C.cyan})`,
+            boxShadow:`0 0 10px ${C.cyan}`,transition:"width .03s"}}/>
+        </div>
+        <div style={{textAlign:"left",width:320}}>
+          {lines.slice(0,line+1).map((l,i)=>(
+            <div key={i} style={{color:i===line?C.cyan:C.textDim,fontSize:11,marginBottom:3,
+              animation:"fadeSlideIn .2s ease both"}}>
+              {l}{i===line&&pct<100&&<span>█</span>}
+            </div>
+          ))}
+        </div>
+        <div style={{color:C.textDim,fontSize:10,marginTop:16}}>{pct}%</div>
+      </div>
+    </div>
+  );
+}
+
+function TabContent({activeTab,tog,setTog,ws,setWs,jp,setJp,atk,setAtk,tx,setTx,ty,setTy,tz,setTz,notify}){
+  const T=(k,v)=>setTog(p=>({...p,[k]:v}));
+  const activeCount=Object.values(tog).filter(Boolean).length;
+
+  if(activeTab==="home") return(
+    <div className="tab-content">
+      <div style={{background:`linear-gradient(135deg,${C.cyanFaint},${C.bgCard})`,
+        border:`1px solid ${C.borderLit}`,borderRadius:10,padding:"14px 16px",
+        marginBottom:12,position:"relative",overflow:"hidden",animation:"borderGlow 3s ease infinite"}}>
+        <div style={{position:"absolute",top:-20,right:-20,width:80,height:80,borderRadius:"50%",background:C.cyanFaint}}/>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:46,height:46,borderRadius:10,
+            background:`linear-gradient(135deg,${C.cyan}44,${C.cyanFaint})`,
+            border:`1px solid ${C.cyan}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>👤</div>
+          <div>
+            <div style={{color:C.cyan,fontFamily:"Rajdhani,sans-serif",fontWeight:700,fontSize:17,letterSpacing:.5}}>BaoPlayer</div>
+            <div style={{color:C.textMid,fontFamily:"JetBrains Mono,monospace",fontSize:11}}>@BaoPlayer123</div>
+          </div>
+          <div style={{marginLeft:"auto"}}>
+            <div style={{background:C.green+"22",color:C.green,fontSize:10,
+              fontFamily:"JetBrains Mono,monospace",padding:"3px 8px",
+              borderRadius:4,border:`1px solid ${C.green}44`}}>● ONLINE</div>
+          </div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        <StatBadge label="PING" value="24ms" color={C.green}/>
+        <StatBadge label="PLAYERS" value="12/20" color={C.cyan}/>
+        <StatBadge label="ACTIVE" value={activeCount} color={C.yellow}/>
+      </div>
+      <SectionHead label="Server Info"/>
+      {[["Job ID","...a9f3bc41"],["Server Age","14 phút"],["Account Age","365 ngày"]].map(([k,v])=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+          padding:"8px 14px",background:C.bgCard,borderRadius:7,
+          border:`1px solid ${C.border}`,marginBottom:6}}>
+          <span style={{color:C.textDim,fontFamily:"JetBrains Mono,monospace",fontSize:11}}>{k}</span>
+          <span style={{color:C.cyan,fontFamily:"JetBrains Mono,monospace",fontSize:11,fontWeight:600}}>{v}</span>
+        </div>
+      ))}
+      <SectionHead label="Phím Tắt"/>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+        {[["RCtrl","Ẩn/Hiện"],["Del","Đóng"],["F1","Config"]].map(([k,v])=>(
+          <div key={k} style={{display:"flex",alignItems:"center",gap:6,background:C.bgCard,
+            borderRadius:6,padding:"6px 10px",border:`1px solid ${C.border}`}}>
+            <span style={{background:C.bgHover,color:C.cyan,fontFamily:"JetBrains Mono,monospace",
+              fontSize:10,padding:"1px 6px",borderRadius:4,border:`1px solid ${C.borderLit}`}}>{k}</span>
+            <span style={{color:C.textMid,fontSize:11,fontFamily:"Rajdhani,sans-serif"}}>{v}</span>
+          </div>
+        ))}
+      </div>
+      <Btn label="📋  Copy Discord" desc="discord.gg/BaoHub" onClick={()=>notify("✅ Đã sao chép!","discord.gg/BaoHub")}/>
+    </div>
+  );
+
+  if(activeTab==="combat") return(
+    <div className="tab-content">
+      <SectionHead label="Tấn Công"/>
+      <Toggle label="⚔  Tự động tấn công" desc="Auto click cực nhanh" value={tog.autoAtk} onChange={v=>T("autoAtk",v)}/>
+      <Toggle label="🗡  Tầm đánh xa (Reach)" desc="Mở rộng hitbox vũ khí" value={tog.reach} onChange={v=>T("reach",v)}/>
+      <Slider label="⚡  Tốc độ tấn công" value={atk} min={10} max={500} unit="ms" onChange={setAtk}/>
+      <SectionHead label="Lưu Ý"/>
+      <div style={{background:"#ff4d6d11",border:"1px solid #ff4d6d33",borderRadius:8,
+        padding:"10px 14px",fontSize:11,color:"#ff8099",fontFamily:"JetBrains Mono,monospace",lineHeight:1.7}}>
+        ⚠ Kill Aura không hoạt động trên Blox Fruit<br/>
+        ⚠ Reach chỉ client-side
+      </div>
+    </div>
+  );
+
+  if(activeTab==="player") return(
+    <div className="tab-content">
+      <SectionHead label="Di Chuyển"/>
+      <Slider label="🏃  WalkSpeed" value={ws} min={1} max={500} onChange={setWs}/>
+      <Slider label="🦘  JumpPower" value={jp} min={1} max={500} onChange={setJp}/>
+      <SectionHead label="Khả Năng"/>
+      <Toggle label="🪂  Nhảy vô hạn" desc="JumpRequest không giới hạn" value={tog.infJump} onChange={v=>T("infJump",v)}/>
+      <Toggle label="👻  Xuyên tường (Noclip)" desc="Tắt CanCollide phía client" value={tog.noclip} onChange={v=>T("noclip",v)}/>
+    </div>
+  );
+
+  if(activeTab==="visual") return(
+    <div className="tab-content">
+      <SectionHead label="ESP"/>
+      <Toggle label="👁  Nhìn xuyên tường (ESP)" desc="SelectionBox + BillboardGui qua tường" value={tog.esp} onChange={v=>T("esp",v)}/>
+      {tog.esp&&(
+        <div style={{background:C.cyanFaint,border:`1px solid ${C.borderLit}`,
+          borderRadius:8,padding:"8px 14px",marginBottom:8,fontSize:11,
+          color:C.cyan,fontFamily:"JetBrains Mono,monospace",animation:"fadeSlideIn .2s ease"}}>
+          ● ESP đang hoạt động
+        </div>
+      )}
+      <SectionHead label="Ánh Sáng"/>
+      <Toggle label="☀  Full Bright" desc="Lighting.Ambient = max" value={tog.fullbright} onChange={v=>T("fullbright",v)}/>
+    </div>
+  );
+
+  if(activeTab==="misc") return(
+    <div className="tab-content">
+      <SectionHead label="Teleport"/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+        {[["X",tx,setTx],["Y",ty,setTy],["Z",tz,setTz]].map(([l,v,s])=>(
+          <div key={l}>
+            <div style={{color:C.textDim,fontSize:10,fontFamily:"JetBrains Mono,monospace",marginBottom:4}}>{l}</div>
+            <input value={v} onChange={e=>s(e.target.value)} style={{width:"100%",background:C.bgCard,
+              border:`1px solid ${C.border}`,borderRadius:6,padding:"7px 10px",
+              color:C.cyan,fontFamily:"JetBrains Mono,monospace",fontSize:12,outline:"none"}}/>
+          </div>
+        ))}
+      </div>
+      <Btn label="📍  Teleport đến tọa độ" desc={`(${tx}, ${ty}, ${tz})`} onClick={()=>notify("🌀 Teleport","Đã dịch chuyển!")}/>
+      <Btn label="🏠  Về Spawn" onClick={()=>notify("🏠 Teleport","Đã về Spawn!")}/>
+      <SectionHead label="Tiện Ích"/>
+      <Toggle label="🤖  Anti-AFK" desc="VirtualUser pulse mỗi 4 phút" value={tog.antiafk} onChange={v=>T("antiafk",v)}/>
+    </div>
+  );
+
+  if(activeTab==="config") return(
+    <div className="tab-content">
+      <SectionHead label="Cấu Hình"/>
+      <Btn label="💾  Lưu cấu hình" desc="Ghi vào BaoHub/autoload.cfg" onClick={()=>notify("💾 Đã lưu","Cấu hình được ghi thành công!")}/>
+      <Btn label="📂  Nạp cấu hình" desc="Tải lại lần trước" onClick={()=>notify("📂 Đã nạp","Cấu hình đã được nạp!")}/>
+      <Btn label="🔄  Reset mặc định" onClick={()=>notify("🔄 Reset","Đã đặt lại tất cả!",C.yellow)}/>
+      <SectionHead label="Nguy Hiểm"/>
+      <Btn label="❌  Đóng Hub" accent={C.red} desc="Huỷ toàn bộ & đóng menu" onClick={()=>notify("❌ Đã đóng","Bảo Hub tắt!",C.red)}/>
+    </div>
+  );
+}function Sidebar({activeTab,setTab,tog}){
+  return(
+    <div style={{width:158,background:C.bgSide,borderRight:`1px solid ${C.border}`,
+      padding:"10px 8px",display:"flex",flexDirection:"column"}}>
+      {TABS.map((tab,i)=>{
+        const active=activeTab===tab.id;
+        return(
+          <button key={tab.id} onClick={()=>setTab(tab.id)} style={{
+            display:"flex",alignItems:"center",gap:9,
+            padding:"9px 11px",borderRadius:7,marginBottom:3,
+            background:active?C.cyanFaint:"transparent",
+            border:`1px solid ${active?C.borderLit:"transparent"}`,
+            color:active?C.cyan:C.textDim,
+            fontFamily:"Rajdhani,sans-serif",fontWeight:active?700:500,
+            fontSize:13,cursor:"pointer",textAlign:"left",
+            transition:"all .18s",
+            boxShadow:active?`inset 0 0 16px ${C.cyan}0a`:"none",
+            animation:`fadeSlideIn .3s ease ${i*.05}s both`}}>
+            <span style={{width:22,height:22,borderRadius:5,flexShrink:0,
+              background:active?C.cyan+"22":"transparent",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:13,transition:"background .18s"}}>{tab.icon}</span>
+            {tab.label}
+            {active&&<div style={{marginLeft:"auto",width:3,height:18,borderRadius:2,
+              background:C.cyan,boxShadow:`0 0 8px ${C.cyan}`}}/>}
+          </button>
+        );
+      })}
+      <div style={{marginTop:"auto",borderTop:`1px solid ${C.border}`,paddingTop:10}}>
+        <div style={{color:C.textDim,fontSize:9,fontFamily:"JetBrains Mono,monospace",
+          letterSpacing:1.5,marginBottom:6}}>ĐANG BẬT</div>
+        {Object.entries(tog).filter(([,v])=>v).length===0
+          ?<div style={{color:C.textDim,fontSize:10,fontFamily:"JetBrains Mono,monospace"}}>— Chưa có</div>
+          :Object.entries(tog).filter(([,v])=>v).map(([k])=>(
+            <div key={k} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
+              <div style={{width:5,height:5,borderRadius:"50%",background:C.cyan,
+                boxShadow:`0 0 5px ${C.cyan}`,animation:"floatDot 2s ease-in-out infinite"}}/>
+              <span style={{color:C.cyan,fontSize:10,fontFamily:"JetBrains Mono,monospace"}}>{k}</span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+function Titlebar(){
+  return(
+    <div style={{background:`linear-gradient(90deg,${C.bgSide},${C.bgPanel})`,
+      borderBottom:`1px solid ${C.border}`,padding:"11px 18px",
+      display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div className="glow-pulse" style={{width:30,height:30,borderRadius:8,
+          background:`linear-gradient(135deg,${C.cyan},${C.cyanDim})`,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:15,color:"#000",fontWeight:900}}>⚡</div>
+        <div>
+          <div style={{color:C.cyan,fontFamily:"Rajdhani,sans-serif",fontWeight:900,
+            fontSize:16,letterSpacing:3,textShadow:`0 0 20px ${C.cyan}88`}}>BẢO HUB</div>
+          <div style={{color:C.textDim,fontSize:9,fontFamily:"JetBrains Mono,monospace",letterSpacing:1}}>SIÊU SIÊU MẠNH • v3.0</div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:7,alignItems:"center"}}>
+        {[C.yellow,C.green,C.red].map((c,i)=>(
+          <div key={i} style={{width:11,height:11,borderRadius:"50%",background:c,
+            boxShadow:`0 0 6px ${c}88`,cursor:"pointer"}}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Footer(){
+  return(
+    <div style={{borderTop:`1px solid ${C.border}`,padding:"7px 18px",
+      display:"flex",justifyContent:"space-between",alignItems:"center",
+      background:C.bgSide}}>
+      <span style={{color:C.textDim,fontSize:9,fontFamily:"JetBrains Mono,monospace"}}>
+        ⚡ BẢO HUB v3.0 • Fluent UI • Dark Neon
+      </span>
+      <span style={{color:C.textDim,fontSize:9,fontFamily:"JetBrains Mono,monospace"}}>
+        RCtrl → ẩn/hiện
+      </span>
+    </div>
+  );
+}
+
+function Toast({notif}){
+  if(!notif) return null;
+  return(
+    <div style={{position:"fixed",bottom:24,right:24,
+      background:C.bgCard,border:`1px solid ${notif.color}44`,
+      borderRadius:10,padding:"12px 16px",minWidth:220,
+      boxShadow:`0 0 24px ${notif.color}33,0 8px 32px #00000066`,
+      animation:"fadeSlideIn .3s cubic-bezier(.34,1.5,.64,1)",zIndex:9999}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+        <div style={{width:6,height:6,borderRadius:"50%",background:notif.color,
+          boxShadow:`0 0 6px ${notif.color}`,animation:"pulse 1.5s infinite"}}/>
+        <span style={{color:notif.color,fontFamily:"Rajdhani,sans-serif",fontWeight:700,fontSize:13}}>{notif.title}</span>
+      </div>
+      <div style={{color:C.textMid,fontFamily:"JetBrains Mono,monospace",fontSize:11}}>{notif.msg}</div>
+    </div>
+  );
+}export default function BaoHub(){
+  const [booted,setBooted]=useState(false);
+  const [visible,setVisible]=useState(false);
+  const [activeTab,setTab]=useState("home");
+  const [notif,setNotif]=useState(null);
+  const notifTimer=useRef(null);
+
+  const [tog,setTog]=useState({
+    autoAtk:false,reach:false,infJump:false,
+    noclip:false,esp:false,fullbright:false,antiafk:false,
+  });
+
+  const [ws,setWs]=useState(16);
+  const [jp,setJp]=useState(50);
+  const [atk,setAtk]=useState(50);
+  const [tx,setTx]=useState("0");
+  const [ty,setTy]=useState("50");
+  const [tz,setTz]=useState("0");
+
+  const notify=(title,msg,color)=>{
+    clearTimeout(notifTimer.current);
+    setNotif({title,msg,color:color||C.cyan});
+    notifTimer.current=setTimeout(()=>setNotif(null),3500);
+  };
+
+  const handleBooted=()=>{
+    setBooted(true);
+    setTimeout(()=>{
+      setVisible(true);
+      notify("⚡ BẢO HUB","Đã kích hoạt thành công!",C.cyan);
+    },200);
+  };
+
+  if(!booted) return(
+    <>
+      <GlobalStyle/>
+      <BootScreen onDone={handleBooted}/>
+    </>
+  );
+
+  return(
+    <>
+      <GlobalStyle/>
+      <div style={{minHeight:"100vh",background:C.bg,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        position:"relative",overflow:"hidden"}}>
+
+        <div style={{position:"fixed",inset:0,opacity:.025,
+          backgroundImage:`linear-gradient(${C.cyan} 1px,transparent 1px),linear-gradient(90deg,${C.cyan} 1px,transparent 1px)`,
+          backgroundSize:"40px 40px",animation:"gridPan 8s linear infinite",pointerEvents:"none"}}/>
+
+        <div style={{position:"fixed",top:"20%",left:"35%",
+          width:500,height:400,borderRadius:"50%",
+          background:`radial-gradient(ellipse,${C.cyan}07 0%,transparent 65%)`,
+          pointerEvents:"none"}}/>
+
+        <div style={{width:600,borderRadius:14,overflow:"hidden",
+          border:`1px solid ${C.border}`,
+          boxShadow:`0 0 0 1px ${C.cyan}11,0 30px 80px #000000aa,0 0 60px ${C.cyan}0a`,
+          backdropFilter:"blur(24px)",background:C.bgPanel,
+          transform:visible?"scale(1) translateY(0)":"scale(.96) translateY(16px)",
+          opacity:visible?1:0,
+          transition:"all .4s cubic-bezier(.34,1.3,.64,1)"}}>
+
+          <Titlebar/>
+
+          <div style={{display:"flex"}}>
+            <Sidebar activeTab={activeTab} setTab={setTab} tog={tog}/>
+            <div style={{flex:1,padding:"14px 16px",overflowY:"auto",maxHeight:430}}>
+              <TabContent
+                activeTab={activeTab}
+                tog={tog} setTog={setTog}
+                ws={ws} setWs={setWs}
+                jp={jp} setJp={setJp}
+                atk={atk} setAtk={setAtk}
+                tx={tx} setTx={setTx}
+                ty={ty} setTy={setTy}
+                tz={tz} setTz={setTz}
+                notify={notify}
+              />
+            </div>
+          </div>
+
+          <Footer/>
+        </div>
+      </div>
+
+      <Toast notif={notif}/>
+    </>
+  );
+}
